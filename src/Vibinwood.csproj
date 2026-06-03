@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <AssemblyName>RMW_Haptics</AssemblyName>
+    <AssemblyName>Vibinwood</AssemblyName>
     <RootNamespace>RmwHaptics</RootNamespace>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -24,9 +24,9 @@
     <ItemGroup>
       <PluginDeployFiles Include="$(TargetDir)*.dll" Exclude="$(TargetDir)BepInEx*.dll;$(TargetDir)0Harmony.dll;$(TargetDir)Il2Cpp*.dll;$(TargetDir)UnityEngine*.dll" />
     </ItemGroup>
-    <MakeDir Directories="$(BepInExDir)\plugins\RMW_Haptics" />
+    <MakeDir Directories="$(BepInExDir)\plugins\Vibinwood" />
     <Copy SourceFiles="@(PluginDeployFiles)"
-          DestinationFolder="$(BepInExDir)\plugins\RMW_Haptics"
+          DestinationFolder="$(BepInExDir)\plugins\Vibinwood"
           SkipUnchangedFiles="false" />
   </Target>
 

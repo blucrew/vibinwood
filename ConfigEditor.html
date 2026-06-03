@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>7 Days to Vibe — RMW Config Editor</title>
+<title>Vibinwood — Config Editor</title>
 <style>
   :root{
     --ink:#020617; --panel:#0f172a; --panel2:#1e293b; --line:#1f2c43;
@@ -46,8 +46,8 @@
 <body>
 <header>
   <div class="wrap" style="padding-bottom:0">
-    <h1>7 Days to Vibe — RMW Config Editor
-      <small>Load <code>com.7daystovibe.rmw.cfg</code>, tweak, and download it back into <code>BepInEx/config/</code>.</small>
+    <h1>Vibinwood — Config Editor
+      <small>Load <code>com.vibinwood.haptics.cfg</code>, tweak, and download it back into <code>BepInEx/config/</code>.</small>
     </h1>
   </div>
 </header>
@@ -61,7 +61,7 @@
     <span class="hint" id="status">No file loaded.</span>
   </div>
   <div id="out">
-    <div class="empty">Load your <code>com.7daystovibe.rmw.cfg</code> (it's generated in <code>BepInEx/config/</code> after the game runs once with the plugin).</div>
+    <div class="empty">Load your <code>com.vibinwood.haptics.cfg</code> (it's generated in <code>BepInEx/config/</code> after the game runs once with the plugin).</div>
   </div>
 </div>
 <div class="save-note">Edits are applied to the value lines only — all comments &amp; structure are preserved, so the plugin reads it fine. After downloading, replace the file in <code>BepInEx/config/</code> and relaunch the game.</div>
@@ -164,7 +164,7 @@ function rowFor(e){
 $('#save').onclick=()=>{
   const blob=new Blob([lines.join('\r\n')],{type:'text/plain'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='com.7daystovibe.rmw.cfg'; a.click(); URL.revokeObjectURL(a.href);
+  a.download='com.vibinwood.haptics.cfg'; a.click(); URL.revokeObjectURL(a.href);
 };
 $('#expand').onclick=()=>document.querySelectorAll('details').forEach(d=>d.open=true);
 $('#collapse').onclick=()=>document.querySelectorAll('details').forEach(d=>d.open=false);

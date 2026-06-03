@@ -12,7 +12,7 @@ namespace RmwHaptics
     ///   Body: {"action":"setIntensity","intensity":&lt;0-100&gt;}
     /// action keyword is camelCase "setIntensity" (hyphenated "set-intensity" is silently ignored).
     /// Requires a running XToys script with a Global Trigger consuming the webhook
-    /// (the published "7 Days to Vibe" script at xtoys.app/scripts/7dtvibe works as-is).
+    /// (any script with a setIntensity Global Trigger works; the published xtoys.app/scripts/7dtvibe is one).
     /// </summary>
     public static class XToysManager
     {

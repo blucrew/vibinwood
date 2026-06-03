@@ -32,7 +32,7 @@ namespace RmwHaptics
 
     /// <summary>
     /// Buttplug/Intiface connection + multi-device, multi-actuator dispatch.
-    /// Ported verbatim from the 7 Days to Vibe plugin (engine-agnostic).
+    /// Ported from the sibling 7 Days to Die haptics plugin (engine-agnostic).
     /// </summary>
     public static class ButtplugManager
     {
@@ -106,7 +106,7 @@ namespace RmwHaptics
                 _client = null;
             }
 
-            _client = new ButtplugClient("RMW Haptics");
+            _client = new ButtplugClient("Vibinwood");
 
             _client.DeviceAdded += (_, args) =>
             {

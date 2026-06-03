@@ -142,7 +142,7 @@ namespace RmwHaptics
                 Directory.CreateDirectory(dir);
                 string path = Path.Combine(dir, $"rmw_haptics_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log");
                 _fileWriter = new StreamWriter(path, append: false) { AutoFlush = true };
-                _fileWriter.WriteLine($"# RMW Haptics debug log — opened {DateTime.Now:O}");
+                _fileWriter.WriteLine($"# Vibinwood debug log — opened {DateTime.Now:O}");
                 _fileWriter.WriteLine();
                 Info(LogCat.System, $"Log file opened: {path}");
             }

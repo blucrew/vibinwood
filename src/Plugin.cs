@@ -8,14 +8,14 @@ using HarmonyLib;
 namespace RmwHaptics
 {
     /// <summary>
-    /// 7 Days to Vibe — Robin Morningwood Adventure (The Whellcum's Secret) edition.
+    /// Vibinwood — haptics for Robin Morningwood Adventure (The Whellcum's Secret).
     /// BepInEx 6 IL2CPP plugin. Drives Intiface/Buttplug + XToys haptics from in-game events.
     /// </summary>
     [BepInPlugin(GUID, NAME, VERSION)]
     public class Plugin : BasePlugin
     {
-        public const string GUID    = "com.7daystovibe.rmw";
-        public const string NAME    = "RMW Haptics (7 Days to Vibe)";
+        public const string GUID    = "com.vibinwood.haptics";
+        public const string NAME    = "Vibinwood";
         public const string VERSION = "0.1.0";
 
         private Harmony _harmony = null!;
@@ -127,7 +127,7 @@ namespace RmwHaptics
             // NOTE: an in-game IMGUI panel would need an injected OnGUI MonoBehaviour, but
             // Il2CppInterop's ClassInjector AccessViolates (RewriteType) on this game's runtime
             // — confirmed across Load()/deferred/fresh-cache/latest-BepInEx. Config is file-driven
-            // (com.7daystovibe.rmw.cfg) until a non-injected uGUI panel is built. Injection is OFF.
+            // (com.vibinwood.haptics.cfg) until a non-injected uGUI panel is built. Injection is OFF.
 
             HapticsLogger.Info(LogCat.System, $"Patching complete — {ok} ✓ / {fail} ✗.");
         }

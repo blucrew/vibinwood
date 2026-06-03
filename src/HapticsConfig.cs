@@ -178,8 +178,9 @@ namespace RmwHaptics
             XToysEnabled       = cfg.Bind("XToys", "Enabled", false,
                 "Enable the XToys cloud webhook output (fires alongside Intiface).");
             XToysWebhookId     = cfg.Bind("XToys", "WebhookId", "",
-                "Your XToys Private Webhook ID. Load the '7 Days to Vibe' script (xtoys.app/scripts/7dtvibe), " +
-                "run it, connect your toy, then paste the webhook ID here. Treat it like a password.");
+                "Your XToys Private Webhook ID. Run an XToys script with a Private Webhook + Generic Output " +
+                "and a setIntensity Global Trigger (the published xtoys.app/scripts/7dtvibe works as-is), " +
+                "connect your toy, then paste the webhook ID here. Treat it like a password.");
             XToysMultiplier    = cfg.Bind("XToys", "Multiplier", 1.0f,
                 "Intensity multiplier for XToys output only.");
             XToysMinDurationMs = cfg.Bind("XToys", "MinDurationMs", 400,

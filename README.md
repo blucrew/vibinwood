@@ -1,4 +1,4 @@
-# RMW Haptics — 7 Days to Vibe (Robin Morningwood Adventure edition)
+# Vibinwood
 
 A [BepInEx 6](https://github.com/BepInEx/BepInEx) plugin that drives haptic devices from
 in-game events in **Robin Morningwood Adventure — The Whellcum's Secret (TWS)**.
@@ -7,7 +7,7 @@ Fight, jerk off, win a hot scene, climax — and feel it.
 Two outputs fire in parallel for every event:
 
 - **Intiface / Buttplug** — local USB/Bluetooth toys via [Intiface Central](https://intiface.com/central/).
-- **XToys** — cloud toys via an [xtoys.app](https://xtoys.app) Private Webhook (reuses the published `7dtvibe` script).
+- **XToys** — cloud toys via an [xtoys.app](https://xtoys.app) Private Webhook.
 
 > ⚠️ **Adult content. 18+.** Integrates with adult haptic hardware.
 
@@ -58,17 +58,19 @@ All targets are in `Assembly-CSharp`, global namespace. 11 hooks bind live:
    that ships with this plugin over `…\dotnet\System.Threading.Channels.dll` (a `.net6bak`
    backup is kept). The 7.0 file is the net6-targeted build (binds `System.Runtime 6.0.0.0`),
    so it's safe. *Intiface won't work without this step.*
-3. Copy this plugin's `RMW_Haptics/` folder into `BepInEx/plugins/`.
+3. Copy this plugin's `Vibinwood/` folder into `BepInEx/plugins/`.
 4. Start **Intiface Central** ("Start Server") and/or set up XToys (below).
-5. Launch the game. Settings live in `BepInEx/config/com.7daystovibe.rmw.cfg`.
+5. Launch the game. Settings live in `BepInEx/config/com.vibinwood.haptics.cfg`.
 
 ## XToys setup (optional — cloud devices)
 
-Same flow as the 7DTD plugin — the published **"7 Days to Vibe"** script works as-is:
+You need a running XToys script with a **Private Webhook** + **Generic Output** block and a
+`setIntensity` Global Trigger. The published **[7dtvibe](https://xtoys.app/scripts/7dtvibe)**
+script is a ready-made one that works as-is:
 
 1. Open **[xtoys.app/scripts/7dtvibe](https://xtoys.app/scripts/7dtvibe)**, connect your toy
    under **Generic Output**, press **▶**, keep the tab open.
-2. In `com.7daystovibe.rmw.cfg` (`[XToys]`): `Enabled = true`, `WebhookId = <your-id>`.
+2. In `com.vibinwood.haptics.cfg` (`[XToys]`): `Enabled = true`, `WebhookId = <your-id>`.
 
 The plugin POSTs `https://webhook.xtoys.app/<id>` with `{"action":"setIntensity","intensity":0-100}`.
 
@@ -76,9 +78,9 @@ The plugin POSTs `https://webhook.xtoys.app/<id>` with `{"action":"setIntensity"
 
 ## Modes & configuration
 
-Everything is tuned in `BepInEx/config/com.7daystovibe.rmw.cfg` (the running game reads it on launch). There is **no in-game panel** — see the note below.
+Everything is tuned in `BepInEx/config/com.vibinwood.haptics.cfg` (the running game reads it on launch). There is **no in-game panel** — see the note below.
 
-> 🎛️ **Config editor:** open [`ConfigEditor.html`](ConfigEditor.html) in any browser, **Load** your `com.7daystovibe.rmw.cfg`, tweak everything with sliders/dropdowns (modes, per-event tuning, toy routing), then **Download** it back into `BepInEx/config/`. It edits values in place and preserves the file structure, so the plugin reads it cleanly.
+> 🎛️ **Config editor:** open [`ConfigEditor.html`](ConfigEditor.html) in any browser, **Load** your `com.vibinwood.haptics.cfg`, tweak everything with sliders/dropdowns (modes, per-event tuning, toy routing), then **Download** it back into `BepInEx/config/`. It edits values in place and preserves the file structure, so the plugin reads it cleanly.
 
 **`[General] Mode`** — the master behaviour:
 - `Discrete` — event pulses only (hits, climaxes, hot scenes, brawl)
@@ -97,13 +99,13 @@ Everything is tuned in `BepInEx/config/com.7daystovibe.rmw.cfg` (the running gam
 ## Build (developers)
 
 Requires the **.NET SDK** and a BepInEx-6-initialised copy of the game (for the interop
-reference assemblies). Edit `<GameDir>` in `RMW_Haptics.csproj`, then:
+reference assemblies). Edit `<GameDir>` in `Vibinwood.csproj`, then:
 
 ```sh
 dotnet build -c Release
 ```
 
-The plugin + its managed deps are copied to `<GameDir>\BepInEx\plugins\RMW_Haptics\`.
+The plugin + its managed deps are copied to `<GameDir>\BepInEx\plugins\Vibinwood\`.
 
 | File | What |
 |---|---|

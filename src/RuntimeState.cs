@@ -32,7 +32,7 @@ namespace RmwHaptics
         {
             var mode = HapticsConfig.Mode.Value;
             bool continuous = HapticsConfig.MasterEnabled.Value &&
-                              (mode == HapticMode.Continuous || mode == HapticMode.Both);
+                              (mode == HapticMode.DualArousal || mode == HapticMode.Both);
 
             var ctrl = BattleScreenController.instance;
             InBattle = false;

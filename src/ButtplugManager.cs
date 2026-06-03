@@ -333,24 +333,93 @@ namespace RmwHaptics
 
             try
             {
-                if (pattern == HapticPattern.Vibrate)
+                foreach (var (lvl, ms) in PatternSteps(pattern, intensity, durationMs))
                 {
-                    await device.VibrateAsync(Cmd(intensity));
-                    await Task.Delay(durationMs, token);
-                }
-                else
-                {
-                    int stepMs = Math.Max(1, durationMs / (RampSteps * 2));
-                    for (int i = 0; i <= RampSteps; i++)
-                    { await device.VibrateAsync(Cmd(intensity * i / RampSteps)); await Task.Delay(stepMs, token); }
-                    for (int i = RampSteps; i >= 0; i--)
-                    { await device.VibrateAsync(Cmd(intensity * i / RampSteps)); await Task.Delay(stepMs, token); }
+                    await device.VibrateAsync(Cmd(lvl));
+                    await Task.Delay(ms, token);
                 }
             }
             finally
             {
                 try { device.Stop(); } catch { }
             }
+        }
+
+        // ── Waveform engine ───────────────────────────────────────────────────
+        // Each pattern is a timeline of (level 0–1, holdMs) steps spanning durationMs.
+        // Portable across projects — the curves are pure math, no engine deps.
+        private static List<(double lvl, int ms)> PatternSteps(HapticPattern p, double I, int D)
+        {
+            var s = new List<(double, int)>();
+            D = Math.Max(60, D);
+            switch (p)
+            {
+                case HapticPattern.Vibrate:
+                    s.Add((I, D));
+                    break;
+
+                case HapticPattern.Pulse:   // single swell up then down
+                {
+                    int half = Math.Max(1, D / 2), dt = Math.Max(8, half / RampSteps);
+                    for (int i = 0; i <= RampSteps; i++) s.Add((I * i / RampSteps, dt));
+                    for (int i = RampSteps; i >= 0; i--) s.Add((I * i / RampSteps, dt));
+                    break;
+                }
+
+                case HapticPattern.Wave:    // rolling sine, ~one swell per 700ms
+                {
+                    int dt = 50, n = Math.Max(2, D / dt);
+                    double cycles = Math.Max(1.0, D / 700.0);
+                    for (int i = 0; i < n; i++)
+                    {
+                        double ph = 2 * Math.PI * cycles * i / n;
+                        s.Add((I * (0.5 + 0.5 * Math.Sin(ph - Math.PI / 2)), dt));
+                    }
+                    break;
+                }
+
+                case HapticPattern.Thump:   // percussive hits: sharp attack, fast decay, gap
+                {
+                    const int hit = 40, body = 150, gap = 90, per = hit + body + gap;
+                    int n = Math.Max(1, D / per);
+                    for (int t = 0; t < n; t++)
+                    {
+                        s.Add((I, hit));
+                        for (int k = 5; k >= 1; k--) s.Add((I * 0.7 * k / 5, body / 5));
+                        s.Add((0, gap));
+                    }
+                    break;
+                }
+
+                case HapticPattern.Milk:    // peristaltic squeeze → hold → slow release → rest
+                {
+                    const int per = 620;
+                    int n = Math.Max(1, D / per);
+                    for (int t = 0; t < n; t++)
+                    {
+                        s.Add((I * 0.4, 60));                 // grip
+                        s.Add((I, 110));                      // squeeze
+                        for (int k = 5; k >= 1; k--) s.Add((I * (0.2 + 0.8 * k / 5), 300 / 5)); // slow release
+                        s.Add((I * 0.12, 100));               // rest low
+                    }
+                    break;
+                }
+
+                case HapticPattern.Throb:   // heartbeat lub-dub then rest
+                {
+                    const int per = 700;
+                    int n = Math.Max(1, D / per);
+                    for (int t = 0; t < n; t++)
+                    {
+                        s.Add((I, 90));   s.Add((0, 70));     // lub
+                        s.Add((I * 0.8, 90)); s.Add((0, 110));// dub
+                        s.Add((0, 340));                      // rest
+                    }
+                    break;
+                }
+            }
+            if (s.Count == 0) s.Add((I, D));
+            return s;
         }
 
         private static async Task FireLinear(ButtplugClientDevice device, double intensity,

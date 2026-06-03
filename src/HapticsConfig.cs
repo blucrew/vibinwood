@@ -5,11 +5,13 @@ using BepInEx.Configuration;
 
 namespace RmwHaptics
 {
-    public enum HapticPattern      { Vibrate, Pulse }
+    // Haptic waveforms. Vibrate/Pulse are the originals; the rest are richer feels
+    // (see ButtplugManager.PatternSteps). Designed to be portable across projects.
+    public enum HapticPattern      { Vibrate, Pulse, Wave, Thump, Milk, Throb }
     public enum HapticActuatorType { All, Vibrate, Linear, Rotate }
 
-    /// <summary>Master haptic mode. Discrete = event pulses; Continuous = battle-meter buzz.</summary>
-    public enum HapticMode    { Off, Discrete, Continuous, Both }
+    /// <summary>Master haptic mode. Discrete = event pulses; DualArousal = battle-meter buzz.</summary>
+    public enum HapticMode    { Off, Discrete, DualArousal, Both }
 
     /// <summary>Which battle meter drives a given toy in continuous mode.</summary>
     public enum ArousalSource { Off, Robin, Enemy, Both }
@@ -37,7 +39,7 @@ namespace RmwHaptics
             Enabled    = cfg.Bind(key, "Enabled",    enabled,    description);
             Intensity  = cfg.Bind(key, "Intensity",  intensity,  "Peak intensity 0.0–1.0.");
             DurationMs = cfg.Bind(key, "DurationMs", durationMs, "Event duration in milliseconds.");
-            Pattern    = cfg.Bind(key, "Pattern",    pattern,    "Vibrate (steady) or Pulse (ramp up/down).");
+            Pattern    = cfg.Bind(key, "Pattern",    pattern,    "Waveform: Vibrate (steady), Pulse (single swell), Wave (rolling), Thump (percussive hits), Milk (squeeze/release), Throb (heartbeat).");
         }
 
         /// <summary>Fire this event. scale multiplies the configured intensity (e.g. damage scaling).</summary>
@@ -54,7 +56,7 @@ namespace RmwHaptics
 
             // Mode gate: discrete events only fire in Discrete/Both modes.
             var mode = HapticsConfig.Mode.Value;
-            if (mode == HapticMode.Off || mode == HapticMode.Continuous) return;
+            if (mode == HapticMode.Off || mode == HapticMode.DualArousal) return;
 
             float i = Intensity.Value * scale * HapticsConfig.MasterMultiplier.Value;
             if (i < 0f) i = 0f; if (i > 1f) i = 1f;
@@ -157,21 +159,21 @@ namespace RmwHaptics
             MasterMultiplier = cfg.Bind("General", "MasterMultiplier", 1.0f,
                 "Global intensity multiplier applied to every event (0.0–1.0+).");
             Mode             = cfg.Bind("General", "Mode", HapticMode.Both,
-                "Off / Discrete (event pulses) / Continuous (battle-meter buzz) / Both.");
+                "Off / Discrete (event pulses) / DualArousal (battle-meter buzz) / Both.");
 
-            ContinuousInvert     = cfg.Bind("Continuous", "Invert", true,
+            ContinuousInvert     = cfg.Bind("Dual Arousal", "Invert", true,
                 "true: vibration swells as the character's meter drains toward climax (arousal = 1 − life). " +
                 "false: vibration tracks remaining life directly.");
-            ContinuousMultiplier = cfg.Bind("Continuous", "Multiplier", 1.0f,
-                "Overall intensity scale for the continuous battle buzz.");
-            ContinuousMin        = cfg.Bind("Continuous", "MinIntensity", 0.08f,
+            ContinuousMultiplier = cfg.Bind("Dual Arousal", "Multiplier", 1.0f,
+                "Overall intensity scale for the Dual Arousal battle buzz.");
+            ContinuousMin        = cfg.Bind("Dual Arousal", "MinIntensity", 0.08f,
                 "Floor intensity once arousal is above zero (so a faint buzz is always felt).");
-            ContinuousMax        = cfg.Bind("Continuous", "MaxIntensity", 1.0f,
+            ContinuousMax        = cfg.Bind("Dual Arousal", "MaxIntensity", 1.0f,
                 "Ceiling intensity at full arousal.");
-            XToysSource          = cfg.Bind("Continuous", "XToysSource", ArousalSource.Robin,
-                "Which meter the XToys output follows in continuous mode (Off to disable).");
-            ToyRouting           = cfg.Bind("Continuous", "ToyRouting", "",
-                "Per-toy meter routing, 'DeviceName=Robin;OtherToy=Enemy'. Edited via the in-game panel. " +
+            XToysSource          = cfg.Bind("Dual Arousal", "XToysSource", ArousalSource.Robin,
+                "Which meter the XToys output follows in Dual Arousal mode (Off to disable).");
+            ToyRouting           = cfg.Bind("Dual Arousal", "ToyRouting", "",
+                "Per-toy meter routing, 'DeviceName=Robin;OtherToy=Enemy'. " +
                 "Unlisted toys default to slot 0 → Robin, others → Enemy.");
             LoadRouting();
 

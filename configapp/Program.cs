@@ -189,14 +189,13 @@ namespace VibinwoodConfig
             return page;
         }
 
-        const int RowH = 34, HeadH = 32, PatRowH = 40;
+        const int RowH = 34, HeadH = 32, PatRowH = 70;   // taller: radios wrap to 2–3 lines
 
         TableLayoutPanel BuildCard(string sec)
         {
             var items = _entries.Where(e => e.Section == sec).ToList();
-            int h = HeadH + 6 + items.Sum(e => IsPattern(e) ? PatRowH : RowH);
             var tlp = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, BackColor = T.Panel,
-                RowCount = items.Count + 1, Height = h, Padding = new Padding(0,0,0,6) };
+                AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(0,0,0,6) };
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 168));
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
@@ -208,7 +207,8 @@ namespace VibinwoodConfig
             int row = 1;
             foreach (var e in items)
             {
-                tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, IsPattern(e) ? PatRowH : RowH));
+                bool pat = IsPattern(e);
+                tlp.RowStyles.Add(pat ? new RowStyle(SizeType.AutoSize) : new RowStyle(SizeType.Absolute, RowH));
                 var name = new Label { Text = Label_(e.Key), Dock = DockStyle.Fill, ForeColor = T.Fg,
                     Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(8,0,4,0) };
                 if (e.Desc.Length > 0) _tip.SetToolTip(name, e.Desc);
@@ -236,14 +236,14 @@ namespace VibinwoodConfig
                 return cb;
             }
 
-            if (IsPattern(e))   // radio buttons, one-or-the-other
+            if (IsPattern(e))   // radio buttons, one-or-the-other; row auto-grows as they wrap
             {
-                var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoScroll = false,
-                    BackColor = T.Panel, Margin = new Padding(2,2,2,2) };
+                var flow = new FlowLayoutPanel { Dock = DockStyle.Top, WrapContents = true, AutoScroll = false,
+                    AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = T.Panel, Margin = new Padding(2,4,2,6) };
                 foreach (var opt in e.Accept!)
                 {
                     var rb = new RadioButton { Text = opt, AutoSize = true, ForeColor = T.Fg, Checked = opt == v,
-                        Margin = new Padding(2,4,8,0) };
+                        Margin = new Padding(2,3,10,2) };
                     if (e.Desc.Length>0) _tip.SetToolTip(rb, e.Desc);
                     rb.CheckedChanged += (_,_) => { if (rb.Checked) SetVal(e, opt); };
                     flow.Controls.Add(rb);

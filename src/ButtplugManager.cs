@@ -417,6 +417,55 @@ namespace RmwHaptics
                     }
                     break;
                 }
+
+                case HapticPattern.Flutter: // rapid on/off stutter
+                {
+                    const int on = 45, off = 35, per = on + off;
+                    int n = Math.Max(1, D / per);
+                    for (int t = 0; t < n; t++) { s.Add((I, on)); s.Add((0, off)); }
+                    break;
+                }
+
+                case HapticPattern.Build:   // slow climb 0 → I across the whole duration (edging build)
+                {
+                    int dt = 60, n = Math.Max(2, D / dt);
+                    for (int i = 0; i < n; i++) s.Add((I * i / (n - 1), dt));
+                    break;
+                }
+
+                case HapticPattern.Tease:   // low baseline with irregular spikes
+                {
+                    double[] seq = { 0.15, 0.15, 1.0, 0.15, 0.6, 0.15, 0.15, 1.0, 0.3, 0.15, 0.8, 0.15 };
+                    const int per = 200;
+                    int n = Math.Max(1, D / per);
+                    for (int i = 0; i < n; i++) s.Add((I * seq[i % seq.Length], per));
+                    break;
+                }
+
+                case HapticPattern.Edge:    // rise to ~90%, hover, back off before peak, repeat (denial)
+                {
+                    int n = Math.Max(1, D / 1500);
+                    for (int t = 0; t < n; t++)
+                    {
+                        for (int k = 1; k <= 6; k++) s.Add((0.9 * I * k / 6, 90)); // approach the edge
+                        s.Add((0.9 * I, 240));                                      // hover
+                        s.Add((0.25 * I, 120));                                     // back off
+                        s.Add((0.2 * I, 240));                                      // cool down
+                    }
+                    break;
+                }
+
+                case HapticPattern.Morse:   // three quick dots then a dash (stutter-3)
+                {
+                    const int per = 900;
+                    int n = Math.Max(1, D / per);
+                    for (int t = 0; t < n; t++)
+                    {
+                        for (int k = 0; k < 3; k++) { s.Add((I, 90)); s.Add((0, 70)); } // · · ·
+                        s.Add((I, 260)); s.Add((0, 140));                                // — gap
+                    }
+                    break;
+                }
             }
             if (s.Count == 0) s.Add((I, D));
             return s;

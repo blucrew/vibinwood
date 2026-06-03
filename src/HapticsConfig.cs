@@ -7,7 +7,7 @@ namespace RmwHaptics
 {
     // Haptic waveforms. Vibrate/Pulse are the originals; the rest are richer feels
     // (see ButtplugManager.PatternSteps). Designed to be portable across projects.
-    public enum HapticPattern      { Vibrate, Pulse, Wave, Thump, Milk, Throb }
+    public enum HapticPattern      { Vibrate, Pulse, Wave, Thump, Milk, Throb, Flutter, Build, Tease, Edge, Morse }
     public enum HapticActuatorType { All, Vibrate, Linear, Rotate }
 
     /// <summary>Master haptic mode. Discrete = event pulses; DualArousal = battle-meter buzz.</summary>
@@ -39,7 +39,7 @@ namespace RmwHaptics
             Enabled    = cfg.Bind(key, "Enabled",    enabled,    description);
             Intensity  = cfg.Bind(key, "Intensity",  intensity,  "Peak intensity 0.0–1.0.");
             DurationMs = cfg.Bind(key, "DurationMs", durationMs, "Event duration in milliseconds.");
-            Pattern    = cfg.Bind(key, "Pattern",    pattern,    "Waveform: Vibrate (steady), Pulse (single swell), Wave (rolling), Thump (percussive hits), Milk (squeeze/release), Throb (heartbeat).");
+            Pattern    = cfg.Bind(key, "Pattern",    pattern,    "Waveform: Vibrate (steady), Pulse (swell), Wave (rolling), Thump (percussive), Milk (squeeze/release), Throb (heartbeat), Flutter (rapid stutter), Build (slow climb), Tease (low + spikes), Edge (approach & retreat), Morse (3 quick + dash).");
         }
 
         /// <summary>Fire this event. scale multiplies the configured intensity (e.g. damage scaling).</summary>

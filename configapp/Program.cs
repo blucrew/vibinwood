@@ -37,20 +37,23 @@ namespace VibinwoodConfig
         string[] _lines = Array.Empty<string>();
         readonly List<Entry> _entries = new();
         string _path = "";
-        bool _dirty;
+        string? _pending;
+        bool _dirty, _built;
+        float _s = 1f;                          // DPI scale (DeviceDpi / 96)
 
         readonly TextBox    _pathBox = new();
         readonly Label      _status  = new();
         readonly TabControl _tabs    = new();
+        readonly Panel      _top     = new();
         readonly Button     _save    = new();
+        readonly Button     _browse  = new();
+        readonly Button     _reload  = new();
+        readonly Label      _title   = new();
         readonly ToolTip    _tip     = new() { AutoPopDelay = 30000, InitialDelay = 300, ReshowDelay = 80 };
 
-        // First-tab sections (no "." prefix), in this order.
         static readonly string[] GeneralOrder = { "General", "Dual Arousal", "XToys", "Logging" };
         static readonly string[] PrefixOrder  = { "Combat", "HotScene", "Brawl" };
-        // Pretty tab names for event prefixes.
-        static string PrettyTab(string prefix) => prefix switch { "HotScene" => "Hot Scenes", _ => prefix };
-        // Friendlier control labels for the everyday gaymer.
+        static string PrettyTab(string p) => p switch { "HotScene" => "Hot Scenes", _ => p };
         static string Label_(string k) => k switch {
             "MasterMultiplier" => "Master level", "Multiplier" => "Strength",
             "MinIntensity" => "Min intensity",    "MaxIntensity" => "Max intensity",
@@ -58,55 +61,87 @@ namespace VibinwoodConfig
             "DurationMs"   => "Duration",          "MinDurationMs" => "Min duration",
             "WriteToFile"  => "Write log file",    _ => k };
 
+        int Sc(int px) => (int)Math.Round(px * _s);   // scale a logical pixel value to the current DPI
+
         public MainForm()
         {
             Text = "Vibinwood — Config";
             BackColor = T.Ink; ForeColor = T.Fg;
-            ClientSize = new Size(740, 760);
-            MinimumSize = new Size(600, 480);
             Font = new Font("Segoe UI", 9f);
+            AutoScaleMode = AutoScaleMode.None;       // we scale manually via Sc()
             StartPosition = FormStartPosition.CenterScreen;
 
-            // Tabs fill (added first/back), top + status dock around it.
             _tabs.Dock = DockStyle.Fill; _tabs.BackColor = T.Ink;
-            _tabs.SizeMode = TabSizeMode.Fixed; _tabs.ItemSize = new Size(130, 30);
-            _tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
-            _tabs.DrawItem += DrawTab;
+            _tabs.SizeMode = TabSizeMode.Fixed; _tabs.DrawMode = TabDrawMode.OwnerDrawFixed; _tabs.DrawItem += DrawTab;
             Controls.Add(_tabs);
 
-            var top = new Panel { Dock = DockStyle.Top, Height = 78, BackColor = T.Panel };
-            var title = new Label { Text = "Vibinwood", AutoSize = true, ForeColor = T.Fg,
-                Font = new Font("Segoe UI", 14f, FontStyle.Bold), Location = new Point(14, 11) };
-            _pathBox.SetBounds(14, 46, ClientSize.Width - 28, 22);
-            _pathBox.Anchor = AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right;
-            Style(_pathBox); _pathBox.ReadOnly = true;
+            _top.Dock = DockStyle.Top; _top.BackColor = T.Panel; _top.Resize += (_,_) => PlaceTop();
+            _title.Text = "Vibinwood"; _title.AutoSize = true; _title.ForeColor = T.Fg;
+            Style(_pathBox); _pathBox.ReadOnly = true; _pathBox.Anchor = AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right;
+            StyleBtn(_browse, "Browse…"); StyleBtn(_reload, "Reload"); StyleAccent(_save); _save.Text = "💾 Save";
+            _browse.Anchor = _reload.Anchor = _save.Anchor = AnchorStyles.Top|AnchorStyles.Right;
+            _browse.Click += (_,_) => Browse();
+            _reload.Click += (_,_) => { if (File.Exists(_path)) LoadCfg(_path); };
+            _save.Click   += (_,_) => Save();
+            _top.Controls.AddRange(new Control[]{ _title, _pathBox, _browse, _reload, _save });
+            Controls.Add(_top);
 
-            var browse = MkBtn("Browse…", 86); browse.Anchor = AnchorStyles.Top|AnchorStyles.Right;
-            var reload = MkBtn("Reload", 70);  reload.Anchor = AnchorStyles.Top|AnchorStyles.Right;
-            _save.Text = "💾 Save"; _save.Size = new Size(86, 26); StyleAccent(_save); _save.Anchor = AnchorStyles.Top|AnchorStyles.Right;
-            void Place() { _save.Location = new Point(top.ClientSize.Width-14-_save.Width, 14);
-                reload.Location = new Point(_save.Left-8-reload.Width, 15);
-                browse.Location = new Point(reload.Left-8-browse.Width, 15); }
-            top.Resize += (_,_) => Place();
-            browse.Click += (_,_) => Browse();
-            reload.Click += (_,_) => { if (File.Exists(_path)) LoadCfg(_path); };
-            _save.Click  += (_,_) => Save();
-            top.Controls.AddRange(new Control[]{ title, _pathBox, browse, reload, _save });
-            Controls.Add(top); Place();
-
-            _status.Dock = DockStyle.Bottom; _status.Height = 26; _status.BackColor = T.Panel; _status.ForeColor = T.Muted;
-            _status.TextAlign = ContentAlignment.MiddleLeft; _status.Padding = new Padding(14,0,0,0); _status.Text = "No file loaded.";
+            _status.Dock = DockStyle.Bottom; _status.BackColor = T.Panel; _status.ForeColor = T.Muted;
+            _status.TextAlign = ContentAlignment.MiddleLeft; _status.Text = "Loading…";
             Controls.Add(_status);
 
-            var guess = DefaultPath();
-            if (guess != null) LoadCfg(guess);
+            _pending = DefaultPath();
+        }
+
+        // OnShown fires AFTER the window is placed on its monitor, so DeviceDpi is finally correct
+        // (OnLoad runs too early and reported the primary's old DPI).
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            if (_built) return;
+            _built = true;
+            _s = DeviceDpi / 96f;
+            MinimumSize = new Size(Sc(760), Sc(520));
+            ClientSize  = new Size(Sc(900), Sc(780));
+            ApplyChrome();
+
+            if (_pending != null) LoadCfg(_pending);
             else _status.Text = "Click Browse… and pick your com.vibinwood.haptics.cfg.";
+        }
+
+        // Re-runnable so we can rescale when dragged between monitors of different DPI.
+        void ApplyChrome()
+        {
+            MinimumSize = new Size(Sc(760), Sc(520));
+            _top.Height = Sc(96);
+            _title.Font = new Font("Segoe UI", 14f, FontStyle.Bold); _title.Location = new Point(Sc(14), Sc(12));
+            _pathBox.SetBounds(Sc(14), Sc(58), _top.ClientSize.Width - Sc(28), Sc(24));
+            _browse.Size = new Size(Sc(92), Sc(28)); _reload.Size = new Size(Sc(76), Sc(28)); _save.Size = new Size(Sc(92), Sc(28));
+            _tabs.ItemSize = new Size(Sc(135), Sc(30));
+            _status.Height = Sc(28); _status.Padding = new Padding(Sc(14),0,0,0);
+            PlaceTop();
+        }
+
+        protected override void OnDpiChanged(DpiChangedEventArgs e)
+        {
+            base.OnDpiChanged(e);
+            _s = DeviceDpi / 96f;
+            Bounds = e.SuggestedRectangle;       // follow the OS-suggested resized window
+            ApplyChrome();
+            if (_entries.Count > 0) Render();     // rebuild cards at the new scale
+        }
+
+        void PlaceTop()
+        {
+            if (!_built) return;
+            _save.Location   = new Point(_top.ClientSize.Width - Sc(14) - _save.Width, Sc(14));
+            _reload.Location = new Point(_save.Left - Sc(10) - _reload.Width, Sc(15));
+            _browse.Location = new Point(_reload.Left - Sc(10) - _browse.Width, Sc(15));
         }
 
         void DrawTab(object? s, DrawItemEventArgs e)
         {
-            var tp = _tabs.TabPages[e.Index];
-            bool sel = _tabs.SelectedIndex == e.Index;
+            var tp = _tabs.TabPages[e.Index]; bool sel = _tabs.SelectedIndex == e.Index;
             using var b = new SolidBrush(sel ? T.Panel2 : T.Panel);
             e.Graphics.FillRectangle(b, e.Bounds);
             TextRenderer.DrawText(e.Graphics, tp.Text, new Font("Segoe UI", 9.5f, sel ? FontStyle.Bold : FontStyle.Regular),
@@ -125,7 +160,6 @@ namespace VibinwoodConfig
             if (d.ShowDialog(this) == DialogResult.OK) LoadCfg(d.FileName);
         }
 
-        // ── Parse ──
         void LoadCfg(string path)
         {
             _path = path; _pathBox.Text = path;
@@ -158,48 +192,43 @@ namespace VibinwoodConfig
         {
             _tabs.SuspendLayout();
             _tabs.TabPages.Clear();
-
-            var prefixes = _entries.Select(e => e.Section).Where(s => s.Contains('.'))
-                .Select(s => s.Split('.')[0]).Distinct()
+            var prefixes = _entries.Select(e => e.Section).Where(s => s.Contains('.')).Select(s => s.Split('.')[0]).Distinct()
                 .OrderBy(p => { int i = Array.IndexOf(PrefixOrder, p); return i<0?99:i; }).ThenBy(p => p).ToList();
 
-            // Tab 1: General + the other non-prefixed sections.
             _tabs.TabPages.Add(MakeTab("General",
                 _entries.Select(e=>e.Section).Where(s=>!s.Contains('.')).Distinct()
                         .OrderBy(s => { int i=Array.IndexOf(GeneralOrder,s); return i<0?99:i; }).ToList()));
-
-            // One tab per event prefix (Combat, Hot Scenes, Brawl…).
             foreach (var pfx in prefixes)
                 _tabs.TabPages.Add(MakeTab(PrettyTab(pfx),
                     _entries.Select(e=>e.Section).Where(s=>s.StartsWith(pfx+".")).Distinct().OrderBy(s=>s).ToList()));
-
             _tabs.ResumeLayout();
         }
 
         TabPage MakeTab(string name, List<string> sections)
         {
-            var page = new TabPage(name) { BackColor = T.Ink, AutoScroll = true, Padding = new Padding(10,8,10,8) };
-            // Dock=Top stacks newest on top → add bottom-up so first section ends on top.
+            var page = new TabPage(name) { BackColor = T.Ink, AutoScroll = true, Padding = new Padding(Sc(10),Sc(8),Sc(10),Sc(8)) };
             for (int i = sections.Count - 1; i >= 0; i--)
             {
-                page.Controls.Add(new Panel { Dock = DockStyle.Top, Height = 10, BackColor = T.Ink });
+                page.Controls.Add(new Panel { Dock = DockStyle.Top, Height = Sc(10), BackColor = T.Ink });
                 var card = BuildCard(sections[i]); card.Dock = DockStyle.Top;
                 page.Controls.Add(card);
             }
             return page;
         }
 
-        const int RowH = 34, HeadH = 32, PatRowH = 70;   // taller: radios wrap to 2–3 lines
+        // logical row sizes (scaled at use)
+        const int RowH = 32, HeadH = 30, PatRowH = 76;
 
         TableLayoutPanel BuildCard(string sec)
         {
             var items = _entries.Where(e => e.Section == sec).ToList();
+            int h = Sc(HeadH) + Sc(6) + items.Sum(e => Sc(IsPattern(e) ? PatRowH : RowH));
             var tlp = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, BackColor = T.Panel,
-                AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(0,0,0,6) };
-            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 168));
+                RowCount = items.Count + 1, Height = h, Margin = new Padding(0), Padding = new Padding(0,0,0,Sc(6)) };
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Sc(176)));
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, HeadH));
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, Sc(HeadH)));
             var head = new Label { Text = "  " + sec, Dock = DockStyle.Fill, BackColor = T.Panel2, ForeColor = T.Accent,
                 Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0) };
             tlp.Controls.Add(head, 0, 0); tlp.SetColumnSpan(head, 2);
@@ -207,10 +236,9 @@ namespace VibinwoodConfig
             int row = 1;
             foreach (var e in items)
             {
-                bool pat = IsPattern(e);
-                tlp.RowStyles.Add(pat ? new RowStyle(SizeType.AutoSize) : new RowStyle(SizeType.Absolute, RowH));
+                tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, Sc(IsPattern(e) ? PatRowH : RowH)));
                 var name = new Label { Text = Label_(e.Key), Dock = DockStyle.Fill, ForeColor = T.Fg,
-                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(8,0,4,0) };
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(Sc(8),0,Sc(4),0) };
                 if (e.Desc.Length > 0) _tip.SetToolTip(name, e.Desc);
                 tlp.Controls.Add(name, 0, row);
                 tlp.Controls.Add(MakeControl(e), 1, row);
@@ -230,66 +258,59 @@ namespace VibinwoodConfig
             if (e.Type == "Boolean")
             {
                 var cb = new CheckBox { AutoSize = true, ForeColor = T.Fg, Text = "", Anchor = AnchorStyles.Left,
-                    Margin = new Padding(4,7,0,0), Checked = v == "true" };
+                    Margin = new Padding(Sc(4),Sc(7),0,0), Checked = v == "true" };
                 if (e.Desc.Length>0) _tip.SetToolTip(cb, e.Desc);
                 cb.CheckedChanged += (_,_) => SetVal(e, cb.Checked ? "true" : "false");
                 return cb;
             }
-
-            if (IsPattern(e))   // radio buttons, one-or-the-other; row auto-grows as they wrap
+            if (IsPattern(e))
             {
-                var flow = new FlowLayoutPanel { Dock = DockStyle.Top, WrapContents = true, AutoScroll = false,
-                    AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = T.Panel, Margin = new Padding(2,4,2,6) };
+                var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoScroll = false,
+                    BackColor = T.Panel, Margin = new Padding(Sc(2),Sc(3),Sc(2),Sc(3)) };
                 foreach (var opt in e.Accept!)
                 {
-                    var rb = new RadioButton { Text = opt, AutoSize = true, ForeColor = T.Fg, Checked = opt == v,
-                        Margin = new Padding(2,3,10,2) };
+                    var rb = new RadioButton { Text = opt, AutoSize = true, ForeColor = T.Fg, Checked = opt == v, Margin = new Padding(Sc(2),Sc(3),Sc(10),Sc(2)) };
                     if (e.Desc.Length>0) _tip.SetToolTip(rb, e.Desc);
                     rb.CheckedChanged += (_,_) => { if (rb.Checked) SetVal(e, opt); };
                     flow.Controls.Add(rb);
                 }
                 return flow;
             }
-
-            if (e.Accept != null)   // other enums → dropdown (Mode, Verbosity, Source)
+            if (e.Accept != null)
             {
-                var combo = new ComboBox { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left,
-                    Margin = new Padding(4,5,0,0), FlatStyle = FlatStyle.Flat };
+                var combo = new ComboBox { Width = Sc(180), DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left,
+                    Margin = new Padding(Sc(4),Sc(5),0,0), FlatStyle = FlatStyle.Flat };
                 Style(combo); combo.Items.AddRange(e.Accept.Cast<object>().ToArray());
                 combo.SelectedItem = e.Accept.FirstOrDefault(a => a == v);
                 if (e.Desc.Length>0) _tip.SetToolTip(combo, e.Desc);
                 combo.SelectedIndexChanged += (_,_) => SetVal(e, combo.SelectedItem?.ToString() ?? v);
                 return combo;
             }
-
-            if (e.Type == "Single")   // 0–1 → whole percent
+            if (e.Type == "Single")
             {
                 decimal cur = decimal.TryParse(v, out var dv) ? Math.Round(dv * 100) : 0;
-                var num = new NumericUpDown { Width = 72, DecimalPlaces = 0, Increment = 5, Minimum = 0,
+                var num = new NumericUpDown { Width = Sc(72), DecimalPlaces = 0, Increment = 5, Minimum = 0,
                     Maximum = IsMul(e) ? 500 : 100, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
                 Style(num); num.Value = Math.Clamp(cur, num.Minimum, num.Maximum);
                 num.ValueChanged += (_,_) => SetVal(e, (num.Value/100m).ToString("0.###"));
                 return Suffixed(num, "%", e);
             }
-
-            if (e.Type == "Int32")   // duration ms → seconds
+            if (e.Type == "Int32")
             {
                 if (IsDur(e))
                 {
                     decimal cur = int.TryParse(v, out var iv) ? Math.Round(iv/1000m, 1) : 0;
-                    var num = new NumericUpDown { Width = 72, DecimalPlaces = 1, Increment = 0.1M, Minimum = 0,
-                        Maximum = 60, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
+                    var num = new NumericUpDown { Width = Sc(72), DecimalPlaces = 1, Increment = 0.1M, Minimum = 0, Maximum = 60, Anchor = AnchorStyles.Left, Margin = new Padding(0) };
                     Style(num); num.Value = Math.Clamp(cur, 0, 60);
                     num.ValueChanged += (_,_) => SetVal(e, ((int)Math.Round(num.Value*1000)).ToString());
                     return Suffixed(num, "sec", e);
                 }
-                var n = new NumericUpDown { Width = 110, Minimum = 0, Maximum = 1000000, Increment = 1, Anchor = AnchorStyles.Left, Margin = new Padding(4,5,0,0) };
+                var n = new NumericUpDown { Width = Sc(110), Minimum = 0, Maximum = 1000000, Increment = 1, Anchor = AnchorStyles.Left, Margin = new Padding(Sc(4),Sc(5),0,0) };
                 Style(n); n.Value = int.TryParse(v, out var i2) ? Math.Clamp(i2,0,1000000) : 0;
                 n.ValueChanged += (_,_) => SetVal(e, ((int)n.Value).ToString());
                 return n;
             }
-
-            var tb = new TextBox { Anchor = AnchorStyles.Left|AnchorStyles.Right, Margin = new Padding(4,6,8,0), Text = v };
+            var tb = new TextBox { Anchor = AnchorStyles.Left|AnchorStyles.Right, Margin = new Padding(Sc(4),Sc(6),Sc(8),0), Text = v };
             Style(tb);
             if (Regex.IsMatch(e.Key, "webhook", RegexOptions.IgnoreCase)) tb.PlaceholderText = "your XToys private webhook ID";
             if (e.Desc.Length>0) _tip.SetToolTip(tb, e.Desc);
@@ -297,12 +318,10 @@ namespace VibinwoodConfig
             return tb;
         }
 
-        // numeric + unit suffix in one cell
         Control Suffixed(NumericUpDown num, string unit, Entry e)
         {
-            var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = false,
-                BackColor = T.Panel, Margin = new Padding(4,4,0,0) };
-            var lab = new Label { Text = unit, AutoSize = true, ForeColor = T.Muted, Margin = new Padding(4,6,0,0) };
+            var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, AutoScroll = false, BackColor = T.Panel, Margin = new Padding(Sc(4),Sc(4),0,0) };
+            var lab = new Label { Text = unit, AutoSize = true, ForeColor = T.Muted, Margin = new Padding(Sc(4),Sc(6),0,0) };
             flow.Controls.Add(num); flow.Controls.Add(lab);
             if (e.Desc.Length>0) { _tip.SetToolTip(num, e.Desc); _tip.SetToolTip(lab, e.Desc); }
             return flow;
@@ -311,18 +330,14 @@ namespace VibinwoodConfig
         void Save()
         {
             if (_path.Length == 0) { Browse(); if (_path.Length == 0) return; }
-            try
-            {
-                File.WriteAllText(_path, string.Join("\r\n", _lines));
-                _dirty = false; Title();
-                _status.Text = $"Saved {Path.GetFileName(_path)} at {DateTime.Now:HH:mm:ss}. Relaunch the game to apply.";
-            }
+            try { File.WriteAllText(_path, string.Join("\r\n", _lines)); _dirty = false; Title();
+                  _status.Text = $"Saved {Path.GetFileName(_path)} at {DateTime.Now:HH:mm:ss}. Relaunch the game to apply."; }
             catch (Exception ex) { _status.Text = "Save failed: " + ex.Message; }
         }
 
         static void Style(Control c){ c.BackColor = T.Ink; c.ForeColor = T.Fg; if (c is TextBox tb) tb.BorderStyle = BorderStyle.FixedSingle; }
         static void StyleAccent(Button b){ b.BackColor = T.Accent; b.ForeColor = Color.FromArgb(0x04,0x21,0x0f); b.FlatStyle = FlatStyle.Flat; b.FlatAppearance.BorderSize = 0; b.Font = new Font("Segoe UI", 9f, FontStyle.Bold); }
-        static Button MkBtn(string text, int w){ var b = new Button { Text = text, Width = w, Height = 26, FlatStyle = FlatStyle.Flat, BackColor = T.Panel2, ForeColor = T.Fg }; b.FlatAppearance.BorderColor = T.Line; return b; }
+        static void StyleBtn(Button b, string text){ b.Text = text; b.FlatStyle = FlatStyle.Flat; b.BackColor = T.Panel2; b.ForeColor = T.Fg; b.FlatAppearance.BorderColor = T.Line; }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {

@@ -8,5 +8,6 @@
     <AssemblyName>VibinwoodConfig</AssemblyName>
     <RootNamespace>VibinwoodConfig</RootNamespace>
     <ApplicationDefaultFont>Segoe UI, 9pt</ApplicationDefaultFont>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
 </Project>

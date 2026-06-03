@@ -74,6 +74,24 @@ The plugin POSTs `https://webhook.xtoys.app/<id>` with `{"action":"setIntensity"
 
 ---
 
+## Modes & configuration
+
+Everything is tuned in `BepInEx/config/com.7daystovibe.rmw.cfg` (the running game reads it on launch). There is **no in-game panel** — see the note below.
+
+**`[General] Mode`** — the master behaviour:
+- `Discrete` — event pulses only (hits, climaxes, hot scenes, brawl)
+- `Continuous` — a steady buzz during battles that tracks the live arousal meter
+- `Both` — continuous buzz with discrete pulses layered on top (default)
+- `Off`
+
+**Continuous (battle-meter) mode.** The battle life bar in this game *is* an arousal/edging meter — it drains toward climax. While a battle is active the plugin reads both meters every frame and drives your toys:
+- `[Continuous] Invert = true` — vibration **swells as the meter drains toward climax** (`arousal = 1 − life`). `false` tracks remaining life directly.
+- `Multiplier`, `MinIntensity`, `MaxIntensity` — shape the curve.
+- `[Continuous] ToyRouting` — per-toy meter routing, e.g. `Lovense Gush 2=Robin;Some Other Toy=Enemy`. Unlisted toys default to **slot 0 → Robin, others → Enemy**. So with two toys, one reacts to your character and one to the enemy.
+- `[Continuous] XToysSource` — which meter the XToys output follows (`Robin` / `Enemy` / `Both` / `Off`).
+
+> **No in-game GUI.** A custom IMGUI overlay would need an injected `OnGUI` MonoBehaviour, but `Il2CppInterop`'s ClassInjector hits an uncatchable native `RewriteType` AccessViolation on this game's runtime (confirmed across `Load()`, deferred injection, a field-free type, and the latest BepInEx with a fresh cache). So config is file-driven. An external config editor is the planned GUI.
+
 ## Build (developers)
 
 Requires the **.NET SDK** and a BepInEx-6-initialised copy of the game (for the interop

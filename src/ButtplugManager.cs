@@ -233,6 +233,61 @@ namespace RmwHaptics
             Fire(peakIntensity, durationMs, HapticPattern.Pulse, deviceIndex, HapticActuatorType.Vibrate, -1, ref dummy);
         }
 
+        // ── Sustained (continuous) output ─────────────────────────────────────
+        // Used by the continuous arousal engine: hold a vibration LEVEL on a
+        // specific device slot, updated each tick. Separate from the discrete
+        // Fire() path (which ramps/pulses then stops). Deduped per device.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<ButtplugClientDevice, double> _sustain
+            = new System.Collections.Concurrent.ConcurrentDictionary<ButtplugClientDevice, double>();
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<ButtplugClientDevice, long> _sustainAt
+            = new System.Collections.Concurrent.ConcurrentDictionary<ButtplugClientDevice, long>();
+
+        /// <summary>Hold a vibration level (0–1) on a device slot. Re-sends on change OR every
+        /// ~300ms (heartbeat) so a discrete event's Stop() can't leave it stuck silent.</summary>
+        public static void SetSustained(int slot, double intensity, bool force = false)
+        {
+            intensity = Math.Max(0.0, Math.Min(1.0, intensity));
+            ButtplugClientDevice? dev;
+            lock (_devLock) dev = (slot >= 0 && slot < _devices.Count) ? _devices[slot] : null;
+            if (dev == null) return;
+
+            long now     = Environment.TickCount64;
+            bool changed = !_sustain.TryGetValue(dev, out double last) || Math.Abs(last - intensity) >= 0.02;
+            bool beat    = !_sustainAt.TryGetValue(dev, out long t) || (now - t) >= 300;
+            if (!force && !changed && !beat) return;
+            _sustain[dev]   = intensity;
+            _sustainAt[dev] = now;
+
+            var d = dev;
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var attrs = d.VibrateAttributes.ToList();
+                    if (attrs.Count == 0) return;
+                    if (intensity <= 0.001) { d.Stop(); }
+                    else
+                    {
+                        var cmd = attrs.Select((_, i) => ((uint)i, intensity)).ToArray();
+                        await d.VibrateAsync(cmd);
+                    }
+                }
+                catch (Exception ex) { HapticsLogger.Verbose(LogCat.Buttplug, $"sustain {d.Name}: {ex.Message}"); }
+            });
+        }
+
+        /// <summary>Stop every device's sustained vibration (leaving a battle / mode off).</summary>
+        public static void StopAllSustained()
+        {
+            ButtplugClientDevice[] snap;
+            lock (_devLock) snap = _devices.ToArray();
+            foreach (var d in snap)
+            {
+                _sustain[d] = 0;
+                try { d.Stop(); } catch { }
+            }
+        }
+
         private static Task FireDevice(ButtplugClientDevice device, double intensity, int durationMs,
                                        HapticPattern pattern, HapticActuatorType type, int actuatorIdx,
                                        CancellationToken token)

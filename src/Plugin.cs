@@ -120,6 +120,15 @@ namespace RmwHaptics
             // ── Brawl ──
             P(typeof(BrawlCumshotAttackPanel),"Play",             nameof(Hooks.BrawlClimax));
 
+            // ── Continuous engine: tick every frame during battle; stop on exit ──
+            P(typeof(BattleScreenController), "Update",     nameof(Hooks.BattleTick));
+            P(typeof(BattleScreenController), "ExitScreen", nameof(Hooks.BattleEnd));
+
+            // NOTE: an in-game IMGUI panel would need an injected OnGUI MonoBehaviour, but
+            // Il2CppInterop's ClassInjector AccessViolates (RewriteType) on this game's runtime
+            // — confirmed across Load()/deferred/fresh-cache/latest-BepInEx. Config is file-driven
+            // (com.7daystovibe.rmw.cfg) until a non-injected uGUI panel is built. Injection is OFF.
+
             HapticsLogger.Info(LogCat.System, $"Patching complete — {ok} ✓ / {fail} ✗.");
         }
     }

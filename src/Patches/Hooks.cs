@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace RmwHaptics
 {
@@ -47,5 +48,10 @@ namespace RmwHaptics
 
         // ── Brawl ──
         public static void BrawlClimax()     => HapticsConfig.BrawlClimax.Fire();
+
+        // ── Continuous engine (postfix on BattleScreenController.Update — runs every
+        //    frame while a battle is active; replaces the crash-prone injected MonoBehaviour). ──
+        public static void BattleTick()  => RuntimeState.Tick(Time.deltaTime);
+        public static void BattleEnd()   => ButtplugManager.StopAllSustained();
     }
 }

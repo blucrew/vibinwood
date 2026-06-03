@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>RMW_Haptics</AssemblyName>
+    <RootNamespace>RmwHaptics</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- BepInEx 6 IL2CPP runs plugins under .NET 6 CoreCLR. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- UPDATE THIS to your actual RMW: The Whellcum's Secret install path -->
+    <GameDir>D:\Desktop\Naughty Games\RobinMorningwoodAdventure_TWS</GameDir>
+    <BepInExDir>$(GameDir)\BepInEx</BepInExDir>
+    <CoreDir>$(BepInExDir)\core</CoreDir>
+    <InteropDir>$(BepInExDir)\interop</InteropDir>
+  </PropertyGroup>
+
+  <!-- Copy the built plugin AND its (private) runtime deps into BepInEx/plugins
+       on every successful build. Reference assemblies are <Private>false</Private>
+       so only our DLL + Buttplug/websocket deps land in the output dir. -->
+  <Target Name="CopyToPlugins" AfterTargets="Build">
+    <ItemGroup>
+      <PluginDeployFiles Include="$(TargetDir)*.dll" Exclude="$(TargetDir)BepInEx*.dll;$(TargetDir)0Harmony.dll;$(TargetDir)Il2Cpp*.dll;$(TargetDir)UnityEngine*.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(BepInExDir)\plugins\RMW_Haptics" />
+    <Copy SourceFiles="@(PluginDeployFiles)"
+          DestinationFolder="$(BepInExDir)\plugins\RMW_Haptics"
+          SkipUnchangedFiles="false" />
+  </Target>
+
+  <ItemGroup>
+    <!-- ── BepInEx 6 core ── -->
+    <Reference Include="BepInEx.Core">
+      <HintPath>$(CoreDir)\BepInEx.Core.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Unity.IL2CPP">
+      <HintPath>$(CoreDir)\BepInEx.Unity.IL2CPP.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx.Unity.Common">
+      <HintPath>$(CoreDir)\BepInEx.Unity.Common.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(CoreDir)\0Harmony.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime">
+      <HintPath>$(CoreDir)\Il2CppInterop.Runtime.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppInterop.Common">
+      <HintPath>$(CoreDir)\Il2CppInterop.Common.dll</HintPath><Private>false</Private>
+    </Reference>
+
+    <!-- ── IL2CPP interop assemblies (generated on first game launch) ── -->
+    <Reference Include="Il2Cppmscorlib">
+      <HintPath>$(InteropDir)\Il2Cppmscorlib.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="Il2CppSystem">
+      <HintPath>$(InteropDir)\Il2CppSystem.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(InteropDir)\UnityEngine.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(InteropDir)\UnityEngine.CoreModule.dll</HintPath><Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(InteropDir)\Assembly-CSharp.dll</HintPath><Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Buttplug.io C# client (managed; copied to plugins) -->
+    <PackageReference Include="Buttplug" Version="3.0.1" />
+    <PackageReference Include="Buttplug.Client.Connectors.WebsocketConnector" Version="3.0.1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,24 @@
+# Build output
+src/bin/
+src/obj/
+**/bin/
+**/obj/
+*.user
+
+# Downloaded tooling (Il2CppDumper, BepInEx zips) — not ours to redistribute
+tools/
+
+# Decompiled game code — proprietary, DO NOT publish (game by GrizzlyGamerStudio)
+dump/
+
+# Release artifacts
+dist/
+*.zip
+*.rar
+
+# Local secrets / game config (contains XToys WebhookId)
+*.cfg
+
+# IDE
+.vs/
+.idea/

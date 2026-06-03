@@ -80,7 +80,7 @@ The plugin POSTs `https://webhook.xtoys.app/<id>` with `{"action":"setIntensity"
 
 Everything is tuned in `BepInEx/config/com.vibinwood.haptics.cfg` (the running game reads it on launch). There is **no in-game panel** — see the note below.
 
-> 🎛️ **Config editor:** open [`ConfigEditor.html`](ConfigEditor.html) in any browser, **Load** your `com.vibinwood.haptics.cfg`, tweak everything with sliders/dropdowns (modes, per-event tuning, toy routing), then **Download** it back into `BepInEx/config/`. It edits values in place and preserves the file structure, so the plugin reads it cleanly.
+> 🎛️ **Config editor (desktop app):** [`configapp/`](configapp) is a small .NET WinForms tool that reads `com.vibinwood.haptics.cfg` **directly** and writes it back in place on **Save** — sliders, dropdowns, per-event tuning, toy routing, no download-and-move. Build with `cd configapp && dotnet build -c Release`, run `bin/Release/net9.0-windows/VibinwoodConfig.exe`. (A zero-install browser version, [`ConfigEditor.html`](ConfigEditor.html), is also included as a fallback.) Either way: edit, save, relaunch the game.
 
 **`[General] Mode`** — the master behaviour:
 - `Discrete` — event pulses only (hits, climaxes, hot scenes, brawl)

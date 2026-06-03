@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7 Days to Vibe — RMW Config Editor</title>
+<style>
+  :root{
+    --ink:#020617; --panel:#0f172a; --panel2:#1e293b; --line:#1f2c43;
+    --fg:#f8fafc; --muted:#94a3b8; --accent:#22c55e; --warn:#f59e0b; --danger:#f43f5e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 system-ui,Segoe UI,Roboto,sans-serif;background:var(--ink);color:var(--fg)}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:linear-gradient(180deg,#0b1222,#020617);z-index:5}
+  h1{margin:0;font-size:18px;letter-spacing:.5px}
+  h1 small{color:var(--muted);font-weight:400;font-size:12px;display:block;margin-top:3px}
+  .wrap{max-width:880px;margin:0 auto;padding:20px 24px 80px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+  button,label.file{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px}
+  button.primary{background:var(--accent);color:#04210f;border-color:transparent;font-weight:600}
+  button:hover,label.file:hover{border-color:var(--accent)}
+  input[type=file]{display:none}
+  .hint{color:var(--muted);font-size:12px}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:12px 0;overflow:hidden}
+  summary{padding:13px 16px;cursor:pointer;font-weight:600;letter-spacing:.3px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  summary::-webkit-details-marker{display:none}
+  summary .tag{font-weight:400;font-size:11px;color:var(--muted)}
+  .body{padding:6px 16px 16px;border-top:1px solid var(--line)}
+  .row{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid #16223a}
+  .row:last-child{border-bottom:none}
+  .row .k{font-weight:600}
+  .row .k small{display:block;color:var(--muted);font-weight:400;font-size:11px;margin-top:2px}
+  .ctrl{display:flex;align-items:center;gap:10px}
+  input[type=range]{flex:1;accent-color:var(--accent)}
+  input[type=number],input[type=text],select{background:var(--ink);color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px}
+  input[type=number]{width:90px}
+  input[type=text]{width:100%}
+  select{min-width:140px}
+  .val{min-width:46px;text-align:right;color:var(--accent);font-variant-numeric:tabular-nums}
+  input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+  .empty{color:var(--muted);padding:40px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+  .save-note{position:fixed;left:0;right:0;bottom:0;background:#0b1222;border-top:1px solid var(--line);padding:12px 24px;font-size:12px;color:var(--muted);text-align:center}
+  code{background:var(--panel2);padding:2px 6px;border-radius:5px;color:var(--fg)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding-bottom:0">
+    <h1>7 Days to Vibe — RMW Config Editor
+      <small>Load <code>com.7daystovibe.rmw.cfg</code>, tweak, and download it back into <code>BepInEx/config/</code>.</small>
+    </h1>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <label class="file">📂 Load .cfg<input type="file" id="file" accept=".cfg,.txt"></label>
+    <button class="primary" id="save" disabled>💾 Download .cfg</button>
+    <button id="expand">Expand all</button>
+    <button id="collapse">Collapse all</button>
+    <span class="hint" id="status">No file loaded.</span>
+  </div>
+  <div id="out">
+    <div class="empty">Load your <code>com.7daystovibe.rmw.cfg</code> (it's generated in <code>BepInEx/config/</code> after the game runs once with the plugin).</div>
+  </div>
+</div>
+<div class="save-note">Edits are applied to the value lines only — all comments &amp; structure are preserved, so the plugin reads it fine. After downloading, replace the file in <code>BepInEx/config/</code> and relaunch the game.</div>
+
+<script>
+let lines = [];      // raw file lines
+let entries = [];    // {section,key,type,accept[],desc,lineIdx}
+
+const $ = s => document.querySelector(s);
+
+$('#file').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => { parse(r.result); render(); $('#save').disabled=false; $('#status').textContent = f.name+' loaded — '+entries.length+' settings.'; };
+  r.readAsText(f);
+});
+
+function parse(text){
+  lines = text.replace(/\r\n/g,'\n').split('\n');
+  entries = [];
+  let section='', pend={};
+  for(let i=0;i<lines.length;i++){
+    const ln = lines[i];
+    const t = ln.trim();
+    let m;
+    if(m = t.match(/^\[(.+)\]$/)){ section=m[1]; pend={}; continue; }
+    if(t.startsWith('## ')){ pend.desc = (pend.desc?pend.desc+' ':'')+t.slice(3); continue; }
+    if(m = t.match(/^# Setting type:\s*(.+)$/)){ pend.type=m[1].trim(); continue; }
+    if(m = t.match(/^# Acceptable values:\s*(.+)$/)){ pend.accept=m[1].split(',').map(s=>s.trim()); continue; }
+    if(t.startsWith('#')){ continue; }
+    if(m = ln.match(/^(\s*)([\w.\-]+)\s*=\s*(.*)$/)){
+      entries.push({section,key:m[2],type:pend.type||guessType(m[3]),accept:pend.accept||null,desc:pend.desc||'',lineIdx:i});
+      pend={};
+    }
+  }
+}
+function guessType(v){ v=v.trim(); if(v==='true'||v==='false')return'Boolean'; if(/^-?\d+$/.test(v))return'Int32'; if(/^-?\d*\.?\d+$/.test(v))return'Single'; return'String'; }
+function curVal(e){ return lines[e.lineIdx].split('=').slice(1).join('=').trim(); }
+function setVal(e,v){ const ln=lines[e.lineIdx]; const eq=ln.indexOf('='); lines[e.lineIdx]=ln.slice(0,eq+1)+' '+v; }
+
+// Friendly section order/labels
+const ORDER = ['General','Continuous','XToys','Logging'];
+function sortSections(secs){
+  return secs.sort((a,b)=>{
+    const ia=ORDER.indexOf(a), ib=ORDER.indexOf(b);
+    if(ia>=0||ib>=0) return (ia<0?99:ia)-(ib<0?99:ib);
+    return a.localeCompare(b);
+  });
+}
+
+function render(){
+  const out = $('#out'); out.innerHTML='';
+  const secs = sortSections([...new Set(entries.map(e=>e.section))]);
+  for(const sec of secs){
+    const items = entries.filter(e=>e.section===sec);
+    const det = document.createElement('details');
+    if(ORDER.includes(sec)) det.open = true;
+    det.innerHTML = `<summary>${sec} <span class="tag">${items.length} setting${items.length>1?'s':''}</span></summary>`;
+    const body = document.createElement('div'); body.className='body';
+    for(const e of items) body.appendChild(rowFor(e));
+    det.appendChild(body); out.appendChild(det);
+  }
+}
+
+function rowFor(e){
+  const row = document.createElement('div'); row.className='row';
+  const k = document.createElement('div'); k.className='k';
+  k.innerHTML = e.key + (e.desc?`<small>${e.desc}</small>`:'');
+  const ctrl = document.createElement('div'); ctrl.className='ctrl';
+  const v = curVal(e);
+
+  if(e.type==='Boolean'){
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=(v==='true');
+    cb.onchange=()=>setVal(e,cb.checked?'true':'false');
+    ctrl.appendChild(cb);
+  } else if(e.accept){      // enum dropdown
+    const sel=document.createElement('select');
+    for(const opt of e.accept){ const o=document.createElement('option'); o.value=o.textContent=opt; if(opt===v)o.selected=true; sel.appendChild(o);}
+    sel.onchange=()=>setVal(e,sel.value);
+    ctrl.appendChild(sel);
+  } else if(e.type==='Single'){
+    const isMul=/multiplier/i.test(e.key); const max=isMul?2:1; const step=isMul?0.05:0.01;
+    const rng=document.createElement('input'); rng.type='range'; rng.min=0; rng.max=max; rng.step=step; rng.value=parseFloat(v)||0;
+    const lab=document.createElement('span'); lab.className='val'; lab.textContent=(+rng.value).toFixed(2);
+    rng.oninput=()=>{lab.textContent=(+rng.value).toFixed(2); setVal(e,rng.value);};
+    ctrl.appendChild(rng); ctrl.appendChild(lab);
+  } else if(e.type==='Int32'){
+    const n=document.createElement('input'); n.type='number'; n.step=10; n.value=parseInt(v)||0;
+    n.oninput=()=>setVal(e,String(parseInt(n.value)||0));
+    ctrl.appendChild(n);
+  } else {                  // String
+    const t=document.createElement('input'); t.type='text'; t.value=v;
+    if(/webhook/i.test(e.key)) t.placeholder='your XToys private webhook ID';
+    t.oninput=()=>setVal(e,t.value);
+    ctrl.appendChild(t);
+  }
+  row.appendChild(k); row.appendChild(ctrl); return row;
+}
+
+$('#save').onclick=()=>{
+  const blob=new Blob([lines.join('\r\n')],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='com.7daystovibe.rmw.cfg'; a.click(); URL.revokeObjectURL(a.href);
+};
+$('#expand').onclick=()=>document.querySelectorAll('details').forEach(d=>d.open=true);
+$('#collapse').onclick=()=>document.querySelectorAll('details').forEach(d=>d.open=false);
+</script>
+</body>
+</html>

@@ -78,6 +78,8 @@ The plugin POSTs `https://webhook.xtoys.app/<id>` with `{"action":"setIntensity"
 
 Everything is tuned in `BepInEx/config/com.7daystovibe.rmw.cfg` (the running game reads it on launch). There is **no in-game panel** — see the note below.
 
+> 🎛️ **Config editor:** open [`ConfigEditor.html`](ConfigEditor.html) in any browser, **Load** your `com.7daystovibe.rmw.cfg`, tweak everything with sliders/dropdowns (modes, per-event tuning, toy routing), then **Download** it back into `BepInEx/config/`. It edits values in place and preserves the file structure, so the plugin reads it cleanly.
+
 **`[General] Mode`** — the master behaviour:
 - `Discrete` — event pulses only (hits, climaxes, hot scenes, brawl)
 - `Continuous` — a steady buzz during battles that tracks the live arousal meter

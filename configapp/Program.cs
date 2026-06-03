@@ -54,6 +54,13 @@ namespace VibinwoodConfig
         static readonly string[] GeneralOrder = { "General", "Dual Arousal", "XToys", "Logging" };
         static readonly string[] PrefixOrder  = { "Combat", "HotScene", "Brawl" };
         static string PrettyTab(string p) => p switch { "HotScene" => "Hot Scenes", _ => p };
+        // Card header: drop the "Combat."/"HotScene." prefix and space out CamelCase → "Enemy Attack".
+        static string SectionTitle(string sec)
+        {
+            if (!sec.Contains('.')) return sec;                       // General / Dual Arousal / XToys / Logging
+            string suffix = sec.Substring(sec.LastIndexOf('.') + 1);
+            return Regex.Replace(suffix, "(?<=[a-z0-9])(?=[A-Z])", " ");
+        }
         static string Label_(string k) => k switch {
             "MasterMultiplier" => "Master level", "Multiplier" => "Strength",
             "MinIntensity" => "Min intensity",    "MaxIntensity" => "Max intensity",
@@ -229,7 +236,7 @@ namespace VibinwoodConfig
             tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, Sc(HeadH)));
-            var head = new Label { Text = "  " + sec, Dock = DockStyle.Fill, BackColor = T.Panel2, ForeColor = T.Accent,
+            var head = new Label { Text = "  " + SectionTitle(sec), Dock = DockStyle.Fill, BackColor = T.Panel2, ForeColor = T.Accent,
                 Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0) };
             tlp.Controls.Add(head, 0, 0); tlp.SetColumnSpan(head, 2);
 

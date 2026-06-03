@@ -53,6 +53,9 @@ namespace VibinwoodConfig
 
         static readonly string[] GeneralOrder = { "General", "Dual Arousal", "XToys", "Logging" };
         static readonly string[] PrefixOrder  = { "Combat", "HotScene", "Brawl" };
+        // Event sections forced to the bottom of their tab (e.g. climaxes after the build-up).
+        static readonly string[] BottomSuffixes = { "DoubleCumshot", "RobinCums" };
+        static bool IsBottom(string sec) => BottomSuffixes.Any(b => sec.EndsWith("." + b));
         static string PrettyTab(string p) => p switch { "HotScene" => "Hot Scenes", _ => p };
         // Card header: drop the "Combat."/"HotScene." prefix and space out CamelCase → "Enemy Attack".
         static string SectionTitle(string sec)
@@ -207,7 +210,8 @@ namespace VibinwoodConfig
                         .OrderBy(s => { int i=Array.IndexOf(GeneralOrder,s); return i<0?99:i; }).ToList()));
             foreach (var pfx in prefixes)
                 _tabs.TabPages.Add(MakeTab(PrettyTab(pfx),
-                    _entries.Select(e=>e.Section).Where(s=>s.StartsWith(pfx+".")).Distinct().OrderBy(s=>s).ToList()));
+                    _entries.Select(e=>e.Section).Where(s=>s.StartsWith(pfx+".")).Distinct()
+                            .OrderBy(s => IsBottom(s) ? 1 : 0).ThenBy(s => s).ToList()));
             _tabs.ResumeLayout();
         }
 

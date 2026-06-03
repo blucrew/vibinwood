@@ -8,7 +8,6 @@ using System.Windows.Forms;
 
 namespace VibinwoodConfig
 {
-    // ── Theme ──
     static class T
     {
         public static readonly Color Ink    = Color.FromArgb(0x02,0x06,0x17);
@@ -44,10 +43,11 @@ namespace VibinwoodConfig
         string _path = "";
         bool _dirty;
 
-        readonly TextBox _pathBox = new();
-        readonly Label   _status  = new();
-        readonly Panel   _scroll  = new();
-        readonly Button  _save     = new();
+        readonly TextBox  _pathBox = new();
+        readonly Label    _status  = new();
+        readonly Panel    _scroll  = new();
+        readonly Button   _save    = new();
+        readonly ToolTip  _tip     = new() { AutoPopDelay = 20000, InitialDelay = 350, ReshowDelay = 100 };
 
         static readonly string[] Order = { "General", "Continuous", "XToys", "Logging" };
 
@@ -55,37 +55,45 @@ namespace VibinwoodConfig
         {
             Text = "Vibinwood — Config";
             BackColor = T.Ink; ForeColor = T.Fg;
-            Size = new Size(760, 820);
+            ClientSize = new Size(720, 820);
             MinimumSize = new Size(560, 480);
             Font = new Font("Segoe UI", 9f);
             StartPosition = FormStartPosition.CenterScreen;
 
-            // ── Top bar ──
-            var top = new Panel { Dock = DockStyle.Top, Height = 84, BackColor = T.Panel, Padding = new Padding(14,12,14,10) };
+            // Order matters: add Fill FIRST (back), then Top/Bottom (front) so they claim edges.
+            _scroll.Dock = DockStyle.Fill; _scroll.AutoScroll = true; _scroll.BackColor = T.Ink; _scroll.Padding = new Padding(10,8,10,8);
+            Controls.Add(_scroll);
+
+            var top = new Panel { Dock = DockStyle.Top, Height = 92, BackColor = T.Panel };
             var title = new Label { Text = "Vibinwood", AutoSize = true, ForeColor = T.Fg,
-                Font = new Font("Segoe UI", 13f, FontStyle.Bold), Location = new Point(14, 10) };
-            var subtitle = new Label { Text = "Edit com.vibinwood.haptics.cfg directly — Save writes it back in place.",
-                AutoSize = true, ForeColor = T.Muted, Location = new Point(16, 38) };
-
-            _pathBox.SetBounds(14, 56, 470, 22);
+                Font = new Font("Segoe UI", 14f, FontStyle.Bold), Location = new Point(14, 12) };
+            var sub = new Label { Text = "Edits com.vibinwood.haptics.cfg directly. Save writes it back in place.",
+                AutoSize = true, ForeColor = T.Muted, Location = new Point(16, 44) };
+            _pathBox.SetBounds(14, 64, ClientSize.Width - 28, 22);
+            _pathBox.Anchor = AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right;
             Style(_pathBox); _pathBox.ReadOnly = true;
-            var browse = MkButton("Browse…", 492, 55); browse.Click += (_,_) => Browse();
-            var reload = MkButton("Reload",  580, 55); reload.Click += (_,_) => { if(File.Exists(_path)) LoadCfg(_path); };
-            _save.Text = "💾 Save"; _save.SetBounds(656, 55, 80, 24); StyleAccent(_save); _save.Click += (_,_) => Save();
 
-            top.Controls.AddRange(new Control[]{ title, subtitle, _pathBox, browse, reload, _save });
+            var browse = MkBtn("Browse…", 86); browse.Anchor = AnchorStyles.Top|AnchorStyles.Right;
+            var reload = MkBtn("Reload", 70);  reload.Anchor = AnchorStyles.Top|AnchorStyles.Right;
+            _save.Text = "💾 Save"; _save.Size = new Size(86, 26); StyleAccent(_save); _save.Anchor = AnchorStyles.Top|AnchorStyles.Right;
+            void PlaceTopButtons()
+            {
+                _save.Location  = new Point(top.ClientSize.Width - 14 - _save.Width, 14);
+                reload.Location = new Point(_save.Left - 8 - reload.Width, 15);
+                browse.Location = new Point(reload.Left - 8 - browse.Width, 15);
+            }
+            top.Resize += (_,_) => PlaceTopButtons();
+            browse.Click += (_,_) => Browse();
+            reload.Click += (_,_) => { if (File.Exists(_path)) LoadCfg(_path); };
+            _save.Click  += (_,_) => Save();
+            top.Controls.AddRange(new Control[]{ title, sub, _pathBox, browse, reload, _save });
+            Controls.Add(top);
+            PlaceTopButtons();
 
-            // ── Status strip ──
-            _status.Dock = DockStyle.Bottom; _status.Height = 26; _status.BackColor = T.Panel;
-            _status.ForeColor = T.Muted; _status.TextAlign = ContentAlignment.MiddleLeft; _status.Padding = new Padding(14,0,0,0);
-            _status.Text = "No file loaded.";
+            _status.Dock = DockStyle.Bottom; _status.Height = 26; _status.BackColor = T.Panel; _status.ForeColor = T.Muted;
+            _status.TextAlign = ContentAlignment.MiddleLeft; _status.Padding = new Padding(14,0,0,0); _status.Text = "No file loaded.";
+            Controls.Add(_status);
 
-            // ── Scroll area ──
-            _scroll.Dock = DockStyle.Fill; _scroll.AutoScroll = true; _scroll.BackColor = T.Ink; _scroll.Padding = new Padding(12);
-
-            Controls.Add(_scroll); Controls.Add(top); Controls.Add(_status);
-
-            // Auto-locate the cfg
             var guess = DefaultPath();
             if (guess != null) LoadCfg(guess);
             else _status.Text = "Click Browse… and pick your com.vibinwood.haptics.cfg.";
@@ -93,11 +101,8 @@ namespace VibinwoodConfig
 
         static string? DefaultPath()
         {
-            var candidates = new[]
-            {
-                @"D:\Desktop\Naughty Games\RobinMorningwoodAdventure_TWS\BepInEx\config\com.vibinwood.haptics.cfg",
-            };
-            return candidates.FirstOrDefault(File.Exists);
+            var c = new[] { @"D:\Desktop\Naughty Games\RobinMorningwoodAdventure_TWS\BepInEx\config\com.vibinwood.haptics.cfg" };
+            return c.FirstOrDefault(File.Exists);
         }
 
         void Browse()
@@ -129,10 +134,9 @@ namespace VibinwoodConfig
                     type=null;desc=null;accept=null;
                 }
             }
-            _dirty = false;
             Render();
-            _status.Text = $"Loaded {Path.GetFileName(path)} — {_entries.Count} settings.";
-            Title();
+            _dirty = false; Title();
+            _status.Text = $"Loaded {Path.GetFileName(path)} — {_entries.Count} settings.  Hover a name for its description.";
         }
 
         static string Guess(string v){ v=v.Trim(); if(v is "true" or "false") return "Boolean"; if(Regex.IsMatch(v,@"^-?\d+$")) return "Int32"; if(Regex.IsMatch(v,@"^-?\d*\.?\d+$")) return "Single"; return "String"; }
@@ -140,7 +144,9 @@ namespace VibinwoodConfig
         void SetVal(Entry e, string v){ var ln=_lines[e.LineIdx]; int eq=ln.IndexOf('='); _lines[e.LineIdx]=ln.Substring(0,eq+1)+" "+v; _dirty=true; Title(); }
         void Title(){ Text = "Vibinwood — Config" + (_dirty ? " *" : ""); _save.Enabled = _dirty; }
 
-        // ── Render ──
+        // ── Render: one TableLayoutPanel card per section, fixed-height rows ──
+        const int RowH = 34, HeadH = 32;
+
         void Render()
         {
             _scroll.SuspendLayout();
@@ -148,96 +154,96 @@ namespace VibinwoodConfig
             var secs = _entries.Select(e=>e.Section).Distinct()
                 .OrderBy(s => { int i = Array.IndexOf(Order, s); return i<0?99:i; }).ThenBy(s=>s).ToList();
 
-            int y = 0; int width = _scroll.ClientSize.Width - 36;
-            foreach (var sec in secs)
+            // Dock=Top stacks last-added on top → add bottom-up so first section ends on top.
+            for (int s = secs.Count - 1; s >= 0; s--)
             {
-                var grp = new Panel { BackColor = T.Panel, Width = width, Left = 4, Top = y,
-                    Anchor = AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right };
-                var head = new Label { Text = "  " + sec, Dock = DockStyle.Top, Height = 30, ForeColor = T.Accent,
-                    Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, BackColor = T.Panel2 };
-                grp.Controls.Add(head);
-
-                int ry = 34;
-                foreach (var e in _entries.Where(x=>x.Section==sec))
-                {
-                    var row = MakeRow(e, width - 16);
-                    row.Top = ry; row.Left = 8; row.Width = width - 16;
-                    row.Anchor = AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right;
-                    grp.Controls.Add(row);
-                    ry += row.Height + 4;
-                }
-                grp.Height = ry + 8;
-                _scroll.Controls.Add(grp);
-                y += grp.Height + 12;
+                _scroll.Controls.Add(new Panel { Dock = DockStyle.Top, Height = 10, BackColor = T.Ink });
+                var card = BuildCard(secs[s]);
+                card.Dock = DockStyle.Top;
+                _scroll.Controls.Add(card);
             }
-            _scroll.ResumeLayout();
+            _scroll.ResumeLayout(true);
         }
 
-        Panel MakeRow(Entry e, int w)
+        TableLayoutPanel BuildCard(string sec)
         {
-            bool hasDesc = e.Desc.Length > 0;
-            var row = new Panel { Height = hasDesc ? 60 : 38, BackColor = T.Panel };
+            var items = _entries.Where(e => e.Section == sec).ToList();
+            var tlp = new TableLayoutPanel { Dock = DockStyle.Top, ColumnCount = 2, BackColor = T.Panel,
+                RowCount = items.Count + 1, Height = HeadH + items.Count * RowH + 6, Padding = new Padding(0,0,0,6) };
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200));
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            var name = new Label { Text = e.Key, AutoSize = false, Width = 210, Height = 22, Left = 4, Top = 8,
-                ForeColor = T.Fg, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft };
-            row.Controls.Add(name);
-            if (hasDesc)
+            tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, HeadH));
+            var head = new Label { Text = "  " + sec, Dock = DockStyle.Fill, BackColor = T.Panel2, ForeColor = T.Accent,
+                Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(0) };
+            tlp.Controls.Add(head, 0, 0); tlp.SetColumnSpan(head, 2);
+
+            int row = 1;
+            foreach (var e in items)
             {
-                var d = new Label { Text = e.Desc, AutoSize = false, Left = 6, Top = 34, Width = w - 12, Height = 22,
-                    ForeColor = T.Muted, Font = new Font("Segoe UI", 8f), TextAlign = ContentAlignment.TopLeft, AutoEllipsis = true };
-                row.Controls.Add(d);
+                tlp.RowStyles.Add(new RowStyle(SizeType.Absolute, RowH));
+                var name = new Label { Text = e.Key, Dock = DockStyle.Fill, ForeColor = T.Fg,
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft,
+                    Margin = new Padding(8,0,4,0) };
+                if (e.Desc.Length > 0) _tip.SetToolTip(name, e.Desc);
+                tlp.Controls.Add(name, 0, row);
+                tlp.Controls.Add(MakeControl(e), 1, row);
+                row++;
             }
+            return tlp;
+        }
 
-            int cx = 224, cw = w - 224 - 4;
+        Control MakeControl(Entry e)
+        {
             var v = CurVal(e);
-
             if (e.Type == "Boolean")
             {
-                var cb = new CheckBox { Checked = v=="true", Left = cx, Top = 6, AutoSize = true, ForeColor = T.Fg, Text = "" };
-                cb.CheckedChanged += (_,_) => SetVal(e, cb.Checked ? "true":"false");
-                row.Controls.Add(cb);
+                var cb = new CheckBox { AutoSize = true, ForeColor = T.Fg, Text = "", Anchor = AnchorStyles.Left,
+                    Margin = new Padding(4,7,0,0), Checked = v == "true" };
+                if (e.Desc.Length>0) _tip.SetToolTip(cb, e.Desc);
+                cb.CheckedChanged += (_,_) => SetVal(e, cb.Checked ? "true" : "false");
+                return cb;
             }
-            else if (e.Accept != null)
+            if (e.Accept != null)
             {
-                var combo = new ComboBox { Left = cx, Top = 5, Width = Math.Min(180, cw), DropDownStyle = ComboBoxStyle.DropDownList };
+                var combo = new ComboBox { Width = 180, DropDownStyle = ComboBoxStyle.DropDownList,
+                    Anchor = AnchorStyles.Left, Margin = new Padding(4,5,0,0), FlatStyle = FlatStyle.Flat };
                 Style(combo); combo.Items.AddRange(e.Accept.Cast<object>().ToArray());
-                combo.SelectedItem = e.Accept.FirstOrDefault(a=>a==v) ?? (object?)null;
+                combo.SelectedItem = e.Accept.FirstOrDefault(a => a == v);
+                if (e.Desc.Length>0) _tip.SetToolTip(combo, e.Desc);
                 combo.SelectedIndexChanged += (_,_) => SetVal(e, combo.SelectedItem?.ToString() ?? v);
-                row.Controls.Add(combo);
+                return combo;
             }
-            else if (e.Type == "Single")
+            if (e.Type == "Single")
             {
                 bool isMul = Regex.IsMatch(e.Key, "multiplier", RegexOptions.IgnoreCase);
-                int max = isMul ? 200 : 100;
-                double cur = double.TryParse(v, out var dv) ? dv : 0;
-                var bar = new TrackBar { Left = cx, Top = 2, Width = cw - 56, Minimum = 0, Maximum = max,
-                    TickStyle = TickStyle.None, Value = Math.Clamp((int)Math.Round(cur*100), 0, max), BackColor = T.Panel };
-                var lab = new Label { Left = cx + cw - 50, Top = 7, Width = 46, ForeColor = T.Accent,
-                    Text = (bar.Value/100.0).ToString("0.00"), TextAlign = ContentAlignment.MiddleRight };
-                bar.ValueChanged += (_,_) => { lab.Text = (bar.Value/100.0).ToString("0.00"); SetVal(e, (bar.Value/100.0).ToString("0.##")); };
-                row.Controls.Add(bar); row.Controls.Add(lab);
+                var num = new NumericUpDown { Width = 90, Anchor = AnchorStyles.Left, Margin = new Padding(4,5,0,0),
+                    DecimalPlaces = 2, Increment = 0.05M, Minimum = 0, Maximum = isMul ? 5M : 1M };
+                Style(num); num.Value = decimal.TryParse(v, out var dv) ? Math.Clamp(dv, num.Minimum, num.Maximum) : 0;
+                if (e.Desc.Length>0) _tip.SetToolTip(num, e.Desc);
+                num.ValueChanged += (_,_) => SetVal(e, num.Value.ToString("0.##"));
+                return num;
             }
-            else if (e.Type == "Int32")
+            if (e.Type == "Int32")
             {
-                var num = new NumericUpDown { Left = cx, Top = 5, Width = 110, Minimum = 0, Maximum = 100000, Increment = 10 };
-                Style(num); num.Value = int.TryParse(v, out var iv) ? Math.Clamp(iv,0,100000) : 0;
+                var num = new NumericUpDown { Width = 110, Anchor = AnchorStyles.Left, Margin = new Padding(4,5,0,0),
+                    Minimum = 0, Maximum = 1000000, Increment = 10 };
+                Style(num); num.Value = int.TryParse(v, out var iv) ? Math.Clamp(iv, 0, 1000000) : 0;
+                if (e.Desc.Length>0) _tip.SetToolTip(num, e.Desc);
                 num.ValueChanged += (_,_) => SetVal(e, ((int)num.Value).ToString());
-                row.Controls.Add(num);
+                return num;
             }
-            else
-            {
-                var tb = new TextBox { Left = cx, Top = 5, Width = cw, Text = v };
-                Style(tb);
-                if (Regex.IsMatch(e.Key, "webhook", RegexOptions.IgnoreCase)) tb.PlaceholderText = "your XToys private webhook ID";
-                tb.TextChanged += (_,_) => SetVal(e, tb.Text);
-                row.Controls.Add(tb);
-            }
-            return row;
+            var tb = new TextBox { Anchor = AnchorStyles.Left|AnchorStyles.Right, Margin = new Padding(4,6,8,0), Text = v };
+            Style(tb);
+            if (Regex.IsMatch(e.Key, "webhook", RegexOptions.IgnoreCase)) tb.PlaceholderText = "your XToys private webhook ID";
+            if (e.Desc.Length>0) _tip.SetToolTip(tb, e.Desc);
+            tb.TextChanged += (_,_) => SetVal(e, tb.Text);
+            return tb;
         }
 
         void Save()
         {
-            if (_path.Length == 0) { Browse(); if(_path.Length==0) return; }
+            if (_path.Length == 0) { Browse(); if (_path.Length == 0) return; }
             try
             {
                 File.WriteAllText(_path, string.Join("\r\n", _lines));
@@ -247,13 +253,12 @@ namespace VibinwoodConfig
             catch (Exception ex) { _status.Text = "Save failed: " + ex.Message; }
         }
 
-        // ── Styling helpers ──
+        // ── Style helpers ──
         static void Style(Control c){ c.BackColor = T.Ink; c.ForeColor = T.Fg; if (c is TextBox tb) tb.BorderStyle = BorderStyle.FixedSingle; }
         static void StyleAccent(Button b){ b.BackColor = T.Accent; b.ForeColor = Color.FromArgb(0x04,0x21,0x0f); b.FlatStyle = FlatStyle.Flat; b.FlatAppearance.BorderSize = 0; b.Font = new Font("Segoe UI", 9f, FontStyle.Bold); }
-        static Button MkButton(string text, int x, int y)
+        static Button MkBtn(string text, int w)
         {
-            var b = new Button { Text = text, Left = x, Top = y, Width = 80, Height = 24, FlatStyle = FlatStyle.Flat,
-                BackColor = T.Panel2, ForeColor = T.Fg };
+            var b = new Button { Text = text, Width = w, Height = 26, FlatStyle = FlatStyle.Flat, BackColor = T.Panel2, ForeColor = T.Fg };
             b.FlatAppearance.BorderColor = T.Line;
             return b;
         }
@@ -262,8 +267,7 @@ namespace VibinwoodConfig
         {
             if (_dirty)
             {
-                var r = MessageBox.Show("Save changes before closing?", "Vibinwood — Config",
-                    MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                var r = MessageBox.Show("Save changes before closing?", "Vibinwood — Config", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
                 if (r == DialogResult.Cancel) { e.Cancel = true; return; }
                 if (r == DialogResult.Yes) Save();
             }
